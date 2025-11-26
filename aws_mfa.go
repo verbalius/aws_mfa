@@ -50,6 +50,7 @@ func isMfaError(err error) bool {
 }
 
 var rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+var version = "dev"
 
 func main() {
 	var createFlag bool
@@ -57,9 +58,10 @@ func main() {
 	var autoFlag bool
 
 	rootCmd := &cobra.Command{
-		Use:   "aws_mfa [profile]",
-		Short: "🤖 Manage MFA-enabled AWS profiles and obtain session tokens",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "aws_mfa [profile]",
+		Short:   "🤖 Manage MFA-enabled AWS profiles and obtain session tokens",
+		Args:    cobra.MaximumNArgs(1),
+		Version: version,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if createFlag {
 				return cmdCreate()
