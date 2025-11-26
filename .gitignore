@@ -1,0 +1,34 @@
+# Binaries
+aws_mfa
+aws_mfa_linux_amd64
+aws_mfa_linux_arm64
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build and test outputs
+*.test
+*.out
+coverage.out
+
+# Go specific
+/pkg/
+/vendor/
+
+# Build directories
+/bin/
+
+# IDE/editor
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/
+*.log
+
+# Environment
+.env
+
+# Misc
+dist/
