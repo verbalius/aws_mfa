@@ -4,6 +4,21 @@ Simple CLI to manage AWS MFA profiles and obtain temporary session tokens.
 
 First create static credentials and attach MFA device in AWS console.
 
+## Install from releases
+
+Download the latest release (that corresponds to your architecture) from the [Releases](https://github.com/verbalius/aws_mfa/releases) page and place the binary in your system PATH. Like this
+
+```shell
+mv aws_mfa /usr/local/bin/aws_mfa
+aws_mfa --version
+```
+
+First use run create and follow instructions:
+
+```
+aws_mfa --create
+```
+
 ## Build
 
 To build the tool, run:
@@ -27,13 +42,6 @@ Finally authenticate and obtain temporary session tokens:
 
 Install to the system PATH:
 
-  mv aws_mfa /usr/local/bin/
-
-## Install from release
-
-Download the latest release (that corresponds to your architecture) from the [Releases](https://github.com/verbalius/aws_mfa/releases) page and place the binary in your system PATH. Like this
-
-```shell
-mv aws_mfa /usr/local/bin/aws_mfa
-aws_mfa --version
+```
+mv aws_mfa /usr/local/bin/
 ```
