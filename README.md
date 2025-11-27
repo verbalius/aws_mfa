@@ -6,10 +6,26 @@ First create static credentials and attach MFA device in AWS console.
 
 ## Install from releases
 
-Download the latest release (that corresponds to your architecture) from the [Releases](https://github.com/verbalius/aws_mfa/releases) page and place the binary in your system PATH. Like this
+Download the latest release (that corresponds to your architecture) from the [Releases](https://github.com/verbalius/aws_mfa/releases) page and place the binary in your system PATH.
+
+Make sure to verify the sha256sum of the downloaded binary with the one provided on the releases page.
+
+For example if you have Mac with Apple Sillicon:
 
 ```shell
-mv aws_mfa /usr/local/bin/aws_mfa
+# should match the sha256sum on the releases page
+sha256sum aws_mfa_darwin_arm64
+
+# make it executable
+chmod +x aws_mfa_darwin_arm64
+
+# remove quarantine attribute on macOS if the sha256sum matches
+xattr -dr com.apple.quarantine /usr/local/bin/aws_mfa
+
+# install it to /usr/local/bin
+mv aws_mfa_darwin_arm64 /usr/local/bin/aws_mfa
+
+# check installation
 aws_mfa --version
 ```
 
