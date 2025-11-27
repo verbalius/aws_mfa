@@ -54,8 +54,9 @@ var version = "dev"
 
 func main() {
 	var createFlag bool
-	var completeFlag bool
+	var profilesFlag bool
 	var autoFlag bool
+	var installCompFlag bool
 
 	rootCmd := &cobra.Command{
 		Use:     "aws_mfa [profile]",
@@ -63,10 +64,13 @@ func main() {
 		Args:    cobra.MaximumNArgs(1),
 		Version: version,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if installCompFlag {
+				return installCompletion(cmd)
+			}
 			if createFlag {
 				return cmdCreate()
 			}
-			if completeFlag {
+			if profilesFlag {
 				profiles, err := profilesWithMFA()
 				if err != nil {
 					return err
@@ -91,8 +95,9 @@ func main() {
 	}
 
 	rootCmd.Flags().BoolVar(&createFlag, "create", false, "guided creation of a profile with MFA")
-	rootCmd.Flags().BoolVar(&completeFlag, "complete", false, "list profiles that have MFA configured (for shell completion)")
-	rootCmd.Flags().BoolVar(&autoFlag, "auto", false, "use $AWS_PROFILE for authentication when set")
+	rootCmd.Flags().BoolVar(&profilesFlag, "profiles", false, "list profiles that have MFA configured (for shell completion)")
+	rootCmd.Flags().BoolVar(&autoFlag, "auto", false, "(default) use $AWS_PROFILE for authentication when set")
+	rootCmd.Flags().BoolVar(&installCompFlag, "install-completion", false, "install shell completion for your current shell")
 
 	// Don't show usage on every error; only show for flag/usage errors
 	rootCmd.SilenceUsage = true
@@ -155,6 +160,7 @@ func cmdCreate() error {
 		return err
 	}
 	fmt.Println("📝 Profile created:", name)
+	fmt.Printf("Now run `aws_mfa %s` to obtain session credentials using MFA.\n", name)
 	return nil
 }
 func cmdAuth(profile string) error {
@@ -226,7 +232,7 @@ func cmdAuth(profile string) error {
 	}
 
 	// show connecting log and verify connectivity using GetCallerIdentity with the orig profile
-	fmt.Fprintln(os.Stderr, "🔌 Connecting to AWS..")
+	fmt.Fprintln(os.Stderr, "🔌 Connecting to AWS...")
 	ctx := context.Background()
 	cfg, err := config.LoadDefaultConfig(ctx, config.WithSharedConfigProfile(apiProfile))
 	if err != nil {
@@ -297,6 +303,106 @@ func cmdAuth(profile string) error {
 	green := []string{"🌿", "🐸", "🐢", "🍃", "🥑", "🌵", "🥝", "🐉", "🥦", "🦎", "🥬", "🌲", "🥒", "🐛", "🎄"}
 	e := green[rng.Intn(len(green))]
 	fmt.Printf("%s MFA profile configured. To use in shell run `export AWS_PROFILE=%s`\n", e, profile)
+	return nil
+}
+
+// installCompletion generates and installs simple shell completion that
+// only suggests available MFA-enabled profiles (no flags).
+func installCompletion(cmd *cobra.Command) error {
+	shellEnv := os.Getenv("SHELL")
+	shell := filepath.Base(shellEnv)
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	var dest string
+	var content string
+	switch {
+	case strings.Contains(shell, "zsh"):
+		dir := filepath.Join(home, ".zsh", "completions")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		// zsh: use aws_mfa --profiles to supply completions
+		content = `#compdef aws_mfa
+_aws_mfa() {
+	local -a profiles
+	profiles=("${(@f)$(aws_mfa --profiles)}")
+	_describe 'profiles' profiles
+}
+_arguments '*:profile:_aws_mfa'
+`
+		dest = filepath.Join(dir, "_aws_mfa")
+	case strings.Contains(shell, "fish"):
+		dir := filepath.Join(home, ".config", "fish", "completions")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		// fish: use command substitution to produce completions
+		content = "complete -c aws_mfa -f -a \"(aws_mfa --profiles)\"\n"
+		dest = filepath.Join(dir, "aws_mfa.fish")
+	case strings.Contains(shell, "bash"):
+		dir := filepath.Join(home, ".local", "share", "bash-completion", "completions")
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		// bash: use compgen with aws_mfa --profiles
+		content = `#!/bin/bash
+_aws_mfa() {
+	local cur
+	cur="${COMP_WORDS[COMP_CWORD]}"
+	COMPREPLY=( $(compgen -W "$(aws_mfa --profiles)" -- "$cur") )
+}
+complete -F _aws_mfa aws_mfa
+`
+		dest = filepath.Join(dir, "aws_mfa")
+	default:
+		fmt.Printf("shell not detected or unsupported; supported shells are bash, zsh, fish\n")
+		return nil
+	}
+
+	if err := os.WriteFile(dest, []byte(content), 0644); err != nil {
+		return err
+	}
+	fmt.Printf("wrote completion to %s\n", dest)
+
+	// let's read the .zshrc/.bashrc/.config/fish/config.fish and suggest adding source line if not present
+	var rcPath string
+	var sourceLine string
+	switch {
+	case strings.Contains(shell, "zsh"):
+		rcPath = filepath.Join(home, ".zshrc")
+		sourceLine = fmt.Sprintf("fpath+=%s\nautoload -Uz compinit\ncompinit\n", filepath.Dir(dest))
+	case strings.Contains(shell, "bash"):
+		rcPath = filepath.Join(home, ".bashrc")
+		sourceLine = fmt.Sprintf("source %s\n", dest)
+	case strings.Contains(shell, "fish"):
+		rcPath = filepath.Join(home, ".config", "fish", "config.fish")
+		sourceLine = fmt.Sprintf("source %s\n", dest)
+	}
+	if rcPath != "" {
+		// let's add it ourselves if not already present
+		b, err := os.ReadFile(rcPath)
+		if err == nil {
+			if !strings.Contains(string(b), dest) {
+				f, err := os.OpenFile(rcPath, os.O_APPEND|os.O_WRONLY, 0644)
+				if err != nil {
+					return err
+				}
+				defer f.Close()
+				if _, err := f.WriteString("\n# aws_mfa completion\n" + sourceLine); err != nil {
+					return err
+				}
+				fmt.Printf("added source line to %s\n", rcPath)
+			} else {
+				fmt.Printf("source line already present in %s; no changes made\n", rcPath)
+			}
+		}
+	}
+	// advice user to restart shell
+	fmt.Println("please restart your shell or source your rc file to enable completions")
+	fmt.Printf("run: `source %s` \n", rcPath)
 	return nil
 }
 

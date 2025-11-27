@@ -15,8 +15,29 @@ aws_mfa --version
 
 First use run create and follow instructions:
 
-```
+```shell
 aws_mfa --create
+```
+
+To also have shell completion run this:
+
+```shell
+aws_mfa --install-completion
+```
+
+To authenticate and obtain temporary session tokens run:
+
+| Pro tip you can press tab after typing `aws_mfa ` to see available profiles if shell completion is installed. |
+
+```shell
+aws_mfa my-profile
+```
+
+Also you can automatically fetch the profile name if you have already set the `AWS_PROFILE` environment variable:
+
+```shell
+export AWS_PROFILE=my-profile
+aws_mfa
 ```
 
 ## Build
