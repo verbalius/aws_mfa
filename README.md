@@ -43,7 +43,7 @@ aws_mfa --install-completion
 
 To authenticate and obtain temporary session tokens run:
 
-| Pro tip you can press tab after typing `aws_mfa ` to see available profiles if shell completion is installed. |
+> Pro tip you can press tab after typing `aws_mfa` to see available profiles if shell completion is installed.
 
 ```shell
 aws_mfa my-profile
